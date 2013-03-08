@@ -4,34 +4,409 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Vector;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import seqSimulator.core.CoreSimulator;
+import seqSimulator.evolution.tree.Node;
 
 public class InputFileParser {
+    /**
+     * default beast.tree branch length, used when that info is not in the Newick beast.tree
+     */
+    final static double DEFAULT_LENGTH = 0.001f;
+
 
 	CoreSimulator m_coreSimulator;
+
+	static Pattern endFile_pattern = Pattern.compile("//");
+	static Pattern seqCodonNr_pattern = Pattern.compile("(\\d+)\\s+(\\d+)");
+	
 	
 	public CoreSimulator parseFile(File inputFile) throws Exception{
 		
 		parse(inputFile);
 		
-        if (m_coreSimulator != null)
+        if (m_coreSimulator != null){
             return m_coreSimulator;
+        }
         else {
             throw new Exception("CoreSimulator cannot be created from input file.");
         }
 	}
 	
 	void parse(File inputFile) throws IOException{
-	
+		
+		m_coreSimulator = new CoreSimulator();
+		int sectionCount = 0;
+		
 		FileReader reader = new FileReader(inputFile);
 		BufferedReader bufferedReader = new BufferedReader(reader);
+
+		Matcher matcher;
 		
 	    String line = "";
 	    while ((line = bufferedReader.readLine()) != null) {
-	      System.out.println(line);
+	    	
+	    	matcher = endFile_pattern.matcher(line);
+	    	if(!matcher.find()){
+	    		
+	    		if(sectionCount == 0){
+	    			matcher = seqCodonNr_pattern.matcher(line);
+		    		if(matcher.find()){
+		    			int seqNr = Integer.parseInt(matcher.group(1));
+		    			int codonNr = Integer.parseInt(matcher.group(2));
+		    			System.out.println("seq Nr:" + seqNr + " codonNr:" + codonNr);
+		    		}
+	    		}
+	    		
+	    		if(sectionCount == 1){
+	    			// parse newick format
+	    		}
+	    		
+	    		if(sectionCount == 2){
+	    			
+	    		}	    		
+	    		
+	    		if(line.trim().isEmpty()){
+	    			sectionCount++;
+	    		}
+	    		
+	    	}else{
+	    		break;
+	    	}
 	    }
 	    
 	}
 	
+    char[] m_chars;
+    int m_iTokenStart;
+    int m_iTokenEnd;
+    final static int COMMA = 1;
+    final static int BRACE_OPEN = 3;
+    final static int BRACE_CLOSE = 4;
+    final static int COLON = 5;
+    final static int SEMI_COLON = 8;
+    final static int META_DATA = 6;
+    final static int TEXT = 7;
+    final static int UNKNOWN = 0;
+    
+    int nextToken() {
+        m_iTokenStart = m_iTokenEnd;
+        while (m_iTokenEnd < m_chars.length) {
+            // skip spaces
+            while (m_iTokenEnd < m_chars.length && (m_chars[m_iTokenEnd] == ' ' || m_chars[m_iTokenEnd] == '\t')) {
+                m_iTokenStart++;
+                m_iTokenEnd++;
+            }
+            if (m_chars[m_iTokenEnd] == '(') {
+                m_iTokenEnd++;
+                return BRACE_OPEN;
+            }
+            if (m_chars[m_iTokenEnd] == ':') {
+                m_iTokenEnd++;
+                return COLON;
+            }
+            if (m_chars[m_iTokenEnd] == ';') {
+                m_iTokenEnd++;
+                return SEMI_COLON;
+            }
+            if (m_chars[m_iTokenEnd] == ')') {
+                m_iTokenEnd++;
+                return BRACE_CLOSE;
+            }
+            if (m_chars[m_iTokenEnd] == ',') {
+                m_iTokenEnd++;
+                return COMMA;
+            }
+            if (m_chars[m_iTokenEnd] == '[') {
+                m_iTokenEnd++;
+                while (m_iTokenEnd < m_chars.length && m_chars[m_iTokenEnd - 1] != ']') {
+                    m_iTokenEnd++;
+                }
+                return META_DATA;
+            }
+            while (m_iTokenEnd < m_chars.length && (m_chars[m_iTokenEnd] != ' ' && m_chars[m_iTokenEnd] != '\t'
+                    && m_chars[m_iTokenEnd] != '(' && m_chars[m_iTokenEnd] != ')' && m_chars[m_iTokenEnd] != '['
+                    && m_chars[m_iTokenEnd] != ':' && m_chars[m_iTokenEnd] != ',' && m_chars[m_iTokenEnd] != ';')) {
+                m_iTokenEnd++;
+            }
+            return TEXT;
+        }
+        return UNKNOWN;
+    }
+    
+    public Node parseNewick(String sStr) throws Exception {
+        // get rid of initial and terminal spaces
+        sStr = sStr.replaceAll("^\\s+", "");
+        sStr = sStr.replaceAll("\\s+$", "");
+        
+        try {
+            m_chars = sStr.toCharArray();
+            if (sStr == null || sStr.length() == 0) {
+                return null;
+            }
+            m_iTokenStart = 0;
+            m_iTokenEnd = 0;
+            Vector<Node> stack = new Vector<Node>();
+            Vector<Boolean> isFirstChild = new Vector<Boolean>();
+            stack.add(newNode());
+            isFirstChild.add(true);
+            //stack.lastElement().setHeight(DEFAULT_LENGTH);
+            boolean bIsLabel = true;
+            while (m_iTokenEnd < m_chars.length) {
+            	/*
+                switch (nextToken()) {
+                case BRACE_OPEN: {
+                    Node node2 = newNode();
+                    node2.setHeight(DEFAULT_LENGTH);
+                    stack.add(node2);
+                    isFirstChild.add(true);
+                    bIsLabel = true;
+                }
+                break;
+                case BRACE_CLOSE: {
+                    if (isFirstChild.lastElement()) {
+                        if (m_bAllowSingleChild.get()) {
+                            // process single child nodes
+                            Node left = stack.lastElement();
+                            stack.remove(stack.size() - 1);
+                            isFirstChild.remove(isFirstChild.size() - 1);
+                            Node parent = stack.lastElement();
+                            parent.setLeft(left);
+                            //parent.setRight(null);
+                            left.setParent(parent);
+                            break;
+                        } else {
+                            // don't know how to process single child nodes
+                            throw new Exception("Node with single child found.");
+                        }
+                    }
+                    // process multi(i.e. more than 2)-child nodes by pairwise merging.
+                    while (isFirstChild.get(isFirstChild.size() - 2) == false) {
+                        Node right = stack.lastElement();
+                        stack.remove(stack.size() - 1);
+                        isFirstChild.remove(isFirstChild.size() - 1);
+                        Node left = stack.lastElement();
+                        stack.remove(stack.size() - 1);
+                        isFirstChild.remove(isFirstChild.size() - 1);
+                        Node dummyparent = newNode();
+                        dummyparent.setHeight(DEFAULT_LENGTH);
+                        dummyparent.setLeft(left);
+                        left.setParent(dummyparent);
+                        dummyparent.setRight(right);
+                        right.setParent(dummyparent);
+                        stack.add(dummyparent);
+                        isFirstChild.add(false);
+                    }
+                    // last two nodes on stack merged into single parent node
+                    Node right = stack.lastElement();
+                    stack.remove(stack.size() - 1);
+                    isFirstChild.remove(isFirstChild.size() - 1);
+                    Node left = stack.lastElement();
+                    stack.remove(stack.size() - 1);
+                    isFirstChild.remove(isFirstChild.size() - 1);
+                    Node parent = stack.lastElement();
+                    parent.setLeft(left);
+                    left.setParent(parent);
+                    parent.setRight(right);
+                    right.setParent(parent);
+                }
+                break;
+                case COMMA: {
+                    Node node2 = newNode();
+                    node2.setHeight(DEFAULT_LENGTH);
+                    stack.add(node2);
+                    isFirstChild.add(false);
+                    bIsLabel = true;
+                }
+                break;
+                case COLON:
+                    bIsLabel = false;
+                    break;
+                case TEXT:
+                    if (bIsLabel) {
+                        String sLabel = sStr.substring(m_iTokenStart, m_iTokenEnd);
+                        stack.lastElement().setNr(getLabelIndex(sLabel));
+                    } else {
+                        String sLength = sStr.substring(m_iTokenStart, m_iTokenEnd);
+                        stack.lastElement().setHeight(Double.parseDouble(sLength));
+                    }
+                    break;
+                case META_DATA:
+                    if (stack.lastElement().m_sMetaData == null) {
+                        stack.lastElement().m_sMetaData = sStr.substring(m_iTokenStart + 1, m_iTokenEnd - 1);
+                    } else {
+                        stack.lastElement().m_sMetaData += " " + sStr.substring(m_iTokenStart + 1, m_iTokenEnd - 1);
+                    }
+                    break;
+                case SEMI_COLON:
+                    //System.err.println(stack.lastElement().toString());
+                    Node tree = stack.lastElement();
+                    tree.sort();
+                    // at this stage, all heights are actually lengths
+                    convertLengthToHeight(tree);
+                    int n = tree.getLeafNodeCount();
+                    tree.labelInternalNodes(n);
+                    if (!m_bSurpressMetadata) {
+                        processMetadata(tree);
+                    }
+                    return stack.lastElement();
+                default:
+                    throw new Exception("parseNewick: unknown token");
+            }
+            */
+            }
+            
+        } catch (Exception e) {
+            System.err.println(e.getClass().toString() + "/" + e.getMessage() + ": " + sStr.substring(Math.max(0, m_iTokenStart - 100), m_iTokenStart) + " >>>" + sStr.substring(m_iTokenStart, m_iTokenEnd) + " <<< ...");
+            throw new Exception(e.getMessage() + ": " + sStr.substring(Math.max(0, m_iTokenStart - 100), m_iTokenStart) + " >>>" + sStr.substring(m_iTokenStart, m_iTokenEnd) + " <<< ...");
+        }   
+        
+		return null;
+    }
+    
+    Node newNode() {
+        return new Node();
+    }
+    
+	/*
+    public Node parseNewick(String sStr) throws Exception {
+        // get rid of initial and terminal spaces
+        sStr = sStr.replaceAll("^\\s+", "");
+        sStr = sStr.replaceAll("\\s+$", "");
+
+        try {
+            m_chars = sStr.toCharArray();
+            if (sStr == null || sStr.length() == 0) {
+                return null;
+            }
+            m_iTokenStart = 0;
+            m_iTokenEnd = 0;
+            Vector<Node> stack = new Vector<Node>();
+            Vector<Boolean> isFirstChild = new Vector<Boolean>();
+            stack.add(newNode());
+            isFirstChild.add(true);
+            stack.lastElement().setHeight(DEFAULT_LENGTH);
+            boolean bIsLabel = true;
+            while (m_iTokenEnd < m_chars.length) {
+                switch (nextToken()) {
+                    case BRACE_OPEN: {
+                        Node node2 = newNode();
+                        node2.setHeight(DEFAULT_LENGTH);
+                        stack.add(node2);
+                        isFirstChild.add(true);
+                        bIsLabel = true;
+                    }
+                    break;
+                    case BRACE_CLOSE: {
+                        if (isFirstChild.lastElement()) {
+                            if (m_bAllowSingleChild.get()) {
+                                // process single child nodes
+                                Node left = stack.lastElement();
+                                stack.remove(stack.size() - 1);
+                                isFirstChild.remove(isFirstChild.size() - 1);
+                                Node parent = stack.lastElement();
+                                parent.setLeft(left);
+                                //parent.setRight(null);
+                                left.setParent(parent);
+                                break;
+                            } else {
+                                // don't know how to process single child nodes
+                                throw new Exception("Node with single child found.");
+                            }
+                        }
+                        // process multi(i.e. more than 2)-child nodes by pairwise merging.
+                        while (isFirstChild.get(isFirstChild.size() - 2) == false) {
+                            Node right = stack.lastElement();
+                            stack.remove(stack.size() - 1);
+                            isFirstChild.remove(isFirstChild.size() - 1);
+                            Node left = stack.lastElement();
+                            stack.remove(stack.size() - 1);
+                            isFirstChild.remove(isFirstChild.size() - 1);
+                            Node dummyparent = newNode();
+                            dummyparent.setHeight(DEFAULT_LENGTH);
+                            dummyparent.setLeft(left);
+                            left.setParent(dummyparent);
+                            dummyparent.setRight(right);
+                            right.setParent(dummyparent);
+                            stack.add(dummyparent);
+                            isFirstChild.add(false);
+                        }
+                        // last two nodes on stack merged into single parent node
+                        Node right = stack.lastElement();
+                        stack.remove(stack.size() - 1);
+                        isFirstChild.remove(isFirstChild.size() - 1);
+                        Node left = stack.lastElement();
+                        stack.remove(stack.size() - 1);
+                        isFirstChild.remove(isFirstChild.size() - 1);
+                        Node parent = stack.lastElement();
+                        parent.setLeft(left);
+                        left.setParent(parent);
+                        parent.setRight(right);
+                        right.setParent(parent);
+                    }
+                    break;
+                    case COMMA: {
+                        Node node2 = newNode();
+                        node2.setHeight(DEFAULT_LENGTH);
+                        stack.add(node2);
+                        isFirstChild.add(false);
+                        bIsLabel = true;
+                    }
+                    break;
+                    case COLON:
+                        bIsLabel = false;
+                        break;
+                    case TEXT:
+                        if (bIsLabel) {
+                            String sLabel = sStr.substring(m_iTokenStart, m_iTokenEnd);
+                            stack.lastElement().setNr(getLabelIndex(sLabel));
+                        } else {
+                            String sLength = sStr.substring(m_iTokenStart, m_iTokenEnd);
+                            stack.lastElement().setHeight(Double.parseDouble(sLength));
+                        }
+                        break;
+                    case META_DATA:
+                        if (stack.lastElement().m_sMetaData == null) {
+                            stack.lastElement().m_sMetaData = sStr.substring(m_iTokenStart + 1, m_iTokenEnd - 1);
+                        } else {
+                            stack.lastElement().m_sMetaData += " " + sStr.substring(m_iTokenStart + 1, m_iTokenEnd - 1);
+                        }
+                        break;
+                    case SEMI_COLON:
+                        //System.err.println(stack.lastElement().toString());
+                        Node tree = stack.lastElement();
+                        tree.sort();
+                        // at this stage, all heights are actually lengths
+                        convertLengthToHeight(tree);
+                        int n = tree.getLeafNodeCount();
+                        tree.labelInternalNodes(n);
+                        if (!m_bSurpressMetadata) {
+                            processMetadata(tree);
+                        }
+                        return stack.lastElement();
+                    default:
+                        throw new Exception("parseNewick: unknown token");
+                }
+            }
+            Node tree = stack.lastElement();
+            tree.sort();
+            // at this stage, all heights are actually lengths
+            convertLengthToHeight(tree);
+            int n = tree.getLeafNodeCount();
+            if (tree.getNr() == 0) {
+                tree.labelInternalNodes(n);
+            }
+            if (!m_bSurpressMetadata) {
+                processMetadata(tree);
+            }
+            return tree;
+        } catch (Exception e) {
+            System.err.println(e.getClass().toString() + "/" + e.getMessage() + ": " + sStr.substring(Math.max(0, m_iTokenStart - 100), m_iTokenStart) + " >>>" + sStr.substring(m_iTokenStart, m_iTokenEnd) + " <<< ...");
+            throw new Exception(e.getMessage() + ": " + sStr.substring(Math.max(0, m_iTokenStart - 100), m_iTokenStart) + " >>>" + sStr.substring(m_iTokenStart, m_iTokenEnd) + " <<< ...");
+        }
+    }
+	*/
 }

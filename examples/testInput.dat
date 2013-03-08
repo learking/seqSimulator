@@ -2,9 +2,9 @@
 
 ((Human: 0.21, Chimpanzee: 0.21): 1.29, Gorilla: 1.5, (Orangutan: 1.2, Gibbon: 1.2): 0.3);
 
-0.3	* omega
-1.5	* kappa
-
-
+0	* model: 0:our current model
+0.3 1.5	* omega	kappa
 
 // end of file.
+
+hello
