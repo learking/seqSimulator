@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -17,13 +19,31 @@ public class InputFileParser {
      */
     final static double DEFAULT_LENGTH = 0.001f;
 
-
+    /**
+     * labels of leafs *
+     */
+    List<String> m_sLabels = null;
+    
 	CoreSimulator m_coreSimulator;
 
 	static Pattern endFile_pattern = Pattern.compile("//");
 	static Pattern seqCodonNr_pattern = Pattern.compile("(\\d+)\\s+(\\d+)");
 	
+    /**
+     * used to make sure all taxa only occur once in the tree *
+     */
+    List<Boolean> m_bTaxonIndexInUse = new ArrayList<Boolean>();
+    boolean createUnrecognizedTaxa = false;
+    int m_nOffset = 1;
+    double m_nThreshold = 0.0;
+    Boolean m_bIsLabelledNewick = false;
+    Boolean m_bAllowSingleChild = false;
+    double scale = 1.0;
 	
+    public InputFileParser() {
+    	m_sLabels = new ArrayList<String>();
+    }
+    
 	public CoreSimulator parseFile(File inputFile) throws Exception{
 		
 		parse(inputFile);
@@ -36,7 +56,7 @@ public class InputFileParser {
         }
 	}
 	
-	void parse(File inputFile) throws IOException{
+	void parse(File inputFile) throws Exception{
 		
 		m_coreSimulator = new CoreSimulator();
 		int sectionCount = 0;
@@ -61,8 +81,18 @@ public class InputFileParser {
 		    		}
 	    		}
 	    		
-	    		if(sectionCount == 1){
+	    		if(sectionCount == 1 && !line.trim().isEmpty()){
+	    			System.out.println("parse started!");
+	    			
 	    			// parse newick format
+	    			m_sLabels.add("Human");	    			
+	    			m_sLabels.add("Chimpanzee");
+	    			m_sLabels.add("Gorilla");
+	    			m_sLabels.add("Orangutan");
+	    			m_sLabels.add("Gibbon");
+	    			
+	    			parseNewick(line.trim());
+	    			System.out.println("parse successful!");
 	    		}
 	    		
 	    		if(sectionCount == 2){
@@ -80,6 +110,58 @@ public class InputFileParser {
 	    
 	}
 	
+    /**
+     * Try to map sStr into an index. First, assume it is a number.
+     * If that does not work, look in list of labels to see whether it is there.
+     */
+    private int getLabelIndex(String sStr) throws Exception {
+        if (!m_bIsLabelledNewick && m_sLabels == null) {
+            try {
+                int nIndex = Integer.parseInt(sStr) - m_nOffset;
+                checkTaxaIsAvailable(sStr, nIndex);
+                return nIndex;
+            } catch (Exception e) {
+                System.out.println(e.getClass().getName() + " " + e.getMessage() + ". Perhaps taxa or taxonset is not specified?");
+            }
+        }
+        // look it up in list of taxa
+        for (int nIndex = 0; nIndex < m_sLabels.size(); nIndex++) {
+            if (sStr.equals(m_sLabels.get(nIndex))) {
+                checkTaxaIsAvailable(sStr, nIndex);
+                return nIndex;
+            }
+        }
+
+        // if createUnrecognizedTaxa==true, then do it now, otherwise labels will not be populated and
+        // out of bounds error will occur in m_sLabels later.
+        if (createUnrecognizedTaxa) {
+            m_sLabels.add(sStr);
+            int nIndex = m_sLabels.size() - 1;
+            checkTaxaIsAvailable(sStr, nIndex);
+            return nIndex;
+        }
+
+        // finally, check if its an integer number indicating the taxon id
+        try {
+            int nIndex = Integer.parseInt(sStr) - m_nOffset;
+            checkTaxaIsAvailable(sStr, nIndex);
+            return nIndex;
+        } catch (NumberFormatException e) {
+        	// apparently not a number
+        }
+        throw new Exception("Label '" + sStr + "' in Newick beast.tree could not be identified. Perhaps taxa or taxonset is not specified?");
+    }
+	
+    void checkTaxaIsAvailable(String sStr, int nIndex) throws Exception {
+        while (nIndex + 1 > m_bTaxonIndexInUse.size()) {
+            m_bTaxonIndexInUse.add(false);
+        }
+        if (m_bTaxonIndexInUse.get(nIndex)) {
+            throw new Exception("Duplicate taxon found: " + sStr);
+        }
+        m_bTaxonIndexInUse.set(nIndex, true);
+    }
+    
     char[] m_chars;
     int m_iTokenStart;
     int m_iTokenEnd;
@@ -153,10 +235,10 @@ public class InputFileParser {
             Vector<Boolean> isFirstChild = new Vector<Boolean>();
             stack.add(newNode());
             isFirstChild.add(true);
-            //stack.lastElement().setHeight(DEFAULT_LENGTH);
+            stack.lastElement().setHeight(DEFAULT_LENGTH);
             boolean bIsLabel = true;
             while (m_iTokenEnd < m_chars.length) {
-            	/*
+            	
                 switch (nextToken()) {
                 case BRACE_OPEN: {
                     Node node2 = newNode();
@@ -168,7 +250,7 @@ public class InputFileParser {
                 break;
                 case BRACE_CLOSE: {
                     if (isFirstChild.lastElement()) {
-                        if (m_bAllowSingleChild.get()) {
+                        if (m_bAllowSingleChild) {
                             // process single child nodes
                             Node left = stack.lastElement();
                             stack.remove(stack.size() - 1);
@@ -234,6 +316,8 @@ public class InputFileParser {
                         stack.lastElement().setHeight(Double.parseDouble(sLength));
                     }
                     break;
+                    
+                /*
                 case META_DATA:
                     if (stack.lastElement().m_sMetaData == null) {
                         stack.lastElement().m_sMetaData = sStr.substring(m_iTokenStart + 1, m_iTokenEnd - 1);
@@ -241,6 +325,8 @@ public class InputFileParser {
                         stack.lastElement().m_sMetaData += " " + sStr.substring(m_iTokenStart + 1, m_iTokenEnd - 1);
                     }
                     break;
+                */
+                    
                 case SEMI_COLON:
                     //System.err.println(stack.lastElement().toString());
                     Node tree = stack.lastElement();
@@ -249,26 +335,64 @@ public class InputFileParser {
                     convertLengthToHeight(tree);
                     int n = tree.getLeafNodeCount();
                     tree.labelInternalNodes(n);
-                    if (!m_bSurpressMetadata) {
-                        processMetadata(tree);
-                    }
                     return stack.lastElement();
+                    
                 default:
                     throw new Exception("parseNewick: unknown token");
+                }         
             }
-            */
+            Node tree = stack.lastElement();
+            tree.sort();
+            // at this stage, all heights are actually lengths
+            convertLengthToHeight(tree);
+            int n = tree.getLeafNodeCount();
+            if (tree.getNr() == 0) {
+                tree.labelInternalNodes(n);
             }
-            
+            return tree;   
         } catch (Exception e) {
             System.err.println(e.getClass().toString() + "/" + e.getMessage() + ": " + sStr.substring(Math.max(0, m_iTokenStart - 100), m_iTokenStart) + " >>>" + sStr.substring(m_iTokenStart, m_iTokenEnd) + " <<< ...");
             throw new Exception(e.getMessage() + ": " + sStr.substring(Math.max(0, m_iTokenStart - 100), m_iTokenStart) + " >>>" + sStr.substring(m_iTokenStart, m_iTokenEnd) + " <<< ...");
         }   
-        
-		return null;
     }
     
     Node newNode() {
         return new Node();
+    }
+    
+    void convertLengthToHeight(Node node) {
+        double fTotalHeight = convertLengthToHeight(node, 0);
+        offset(node, -fTotalHeight);
+    }
+
+    double convertLengthToHeight(Node node, double fHeight) {
+        double fLength = node.getHeight();
+        node.setHeight((fHeight - fLength) * scale);
+        if (node.isLeaf()) {
+            return node.getHeight();
+        } else {
+            double fLeft = convertLengthToHeight(node.getLeft(), fHeight - fLength);
+            if (node.getRight() == null) {
+                return fLeft;
+            }
+            double fRight = convertLengthToHeight(node.getRight(), fHeight - fLength);
+            return Math.min(fLeft, fRight);
+        }
+    }
+
+    void offset(Node node, double fDelta) {
+        node.setHeight(node.getHeight() + fDelta);
+        if (node.isLeaf()) {
+            if (node.getHeight() < m_nThreshold) {
+                node.setHeight(0);
+            }
+        }
+        if (!node.isLeaf()) {
+            offset(node.getLeft(), fDelta);
+            if (node.getRight() != null) {
+                offset(node.getRight(), fDelta);
+            }
+        }
     }
     
 	/*
