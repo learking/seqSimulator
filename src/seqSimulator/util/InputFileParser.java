@@ -28,6 +28,7 @@ public class InputFileParser {
 
 	static Pattern endFile_pattern = Pattern.compile("//");
 	static Pattern seqCodonNr_pattern = Pattern.compile("(\\d+)\\s+(\\d+)");
+	static Pattern label_pattern = Pattern.compile("[a-zA-Z]+");
 	
     /**
      * used to make sure all taxa only occur once in the tree *
@@ -54,6 +55,14 @@ public class InputFileParser {
         else {
             throw new Exception("CoreSimulator cannot be created from input file.");
         }
+	}
+	
+	void initLabels(String line) {
+	    Matcher matcher = label_pattern.matcher(line);
+	    // Check all occurance
+	    while (matcher.find()) {
+	    	m_sLabels.add(matcher.group());
+	    }
 	}
 	
 	void parse(File inputFile) throws Exception{
@@ -83,21 +92,22 @@ public class InputFileParser {
 	    		
 	    		if(sectionCount == 1 && !line.trim().isEmpty()){
 	    			System.out.println("parse started!");
-	    			
-	    			// parse newick format
-	    			m_sLabels.add("Human");	    			
-	    			m_sLabels.add("Chimpanzee");
-	    			m_sLabels.add("Gorilla");
-	    			m_sLabels.add("Orangutan");
-	    			m_sLabels.add("Gibbon");
-	    			
-	    			parseNewick(line.trim());
+	    			line = line.trim();
+	    			initLabels(line);
+	    			parseNewick(line);
 	    			System.out.println("parse successful!");
 	    		}
 	    		
 	    		if(sectionCount == 2){
+	    			// parse model type
 	    			
+	    			// and model parameters
 	    		}	    		
+
+	    		if(sectionCount == 3){
+	    			// parse structure environment?
+	    			
+	    		}	
 	    		
 	    		if(line.trim().isEmpty()){
 	    			sectionCount++;
