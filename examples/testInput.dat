@@ -3,7 +3,8 @@
 ((Human: 0.21, Chimpanzee: 0.21): 1.29, Gorilla: 1.5, (Orangutan: 1.2, Gibbon: 1.2): 0.3);
 
 0	* model: 0:our current model
-0.3 1.5	* omega	kappa
+0.25318	0.32894	0.31196	0.10592	1.5	10 * base frequencies (order:A C G T) + kappa + interaction range
+
 
 // end of file.
 

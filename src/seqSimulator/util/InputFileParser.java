@@ -29,6 +29,7 @@ public class InputFileParser {
 	static Pattern endFile_pattern = Pattern.compile("//");
 	static Pattern seqCodonNr_pattern = Pattern.compile("(\\d+)\\s+(\\d+)");
 	static Pattern label_pattern = Pattern.compile("[a-zA-Z]+");
+	static Pattern modelType = Pattern.compile("[0-9]+\\s\\*");
 	
     /**
      * used to make sure all taxa only occur once in the tree *
@@ -100,9 +101,14 @@ public class InputFileParser {
 	    		}
 	    		
 	    		if(sectionCount == 2){
+	    			System.out.println("Model parse start:");
 	    			// parse model type
+	    			matcher = modelType.matcher(line.trim());
+	    			if(matcher.find()){
+	    				System.out.println(matcher.group());
+	    			}
+	    			// parse model parameters based on model type
 	    			
-	    			// and model parameters
 	    		}	    		
 
 	    		if(sectionCount == 3){
