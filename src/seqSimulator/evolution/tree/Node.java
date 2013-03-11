@@ -34,6 +34,17 @@ public class Node {
     
     public Node() {}
     
+    // identifiable
+    protected String m_sID;
+
+    public String getID() {
+        return m_sID;
+    }
+    
+    public void setID(String sID) {
+        m_sID = sID;
+    }
+    
     /**
      * @return true if current node is a leaf node *
      */
@@ -111,6 +122,31 @@ public class Node {
 	}
 	
     /**
+     * @return length of branch in the beast.tree *
+     */
+    public double getLength() {
+        if (isRoot()) {
+            return 0;
+        } else {
+            return getParent().m_fHeight - m_fHeight;
+        }
+    }
+	
+    /**
+     * @return parent node, or null if this is root *
+     */
+    public Node getParent() {
+        return m_Parent;
+    }
+    
+    /**
+     * @return true if current node is root node *
+     */
+    public boolean isRoot() {
+        return m_Parent == null;
+    }
+    
+    /**
      * sorts nodes in children according to lowest numbered label in subtree
      *
      * @return
@@ -153,4 +189,23 @@ public class Node {
         }
         return iLabel;
     } // labelInternalNodes
+    
+    // temp
+    public void printStructure() {
+    	if(!this.isLeaf()) {
+    	Node left = this.getLeft();
+    	Node right = this.getRight();
+    	System.out.print("Node:" + this.getNr() + " Left:" + left.getNr() + " length:" + left.getLength() + " right:" + right.getNr() + " length:" + right.getLength());
+    	if(left.isLeaf()) {
+    		System.out.print(" left ID:" + left.getID());
+    	}
+    	if(right.isLeaf()) {
+    		System.out.print(" right ID:" + right.getID());
+    	}
+    	System.out.println();
+    	left.printStructure();
+    	right.printStructure();
+    	}
+    }
+    
 }

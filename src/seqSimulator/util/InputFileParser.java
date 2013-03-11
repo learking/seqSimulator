@@ -91,11 +91,12 @@ public class InputFileParser {
 	    		}
 	    		
 	    		if(sectionCount == 1 && !line.trim().isEmpty()){
-	    			System.out.println("parse started!");
+	    			System.out.println("Newick tree parse started!");
 	    			line = line.trim();
 	    			initLabels(line);
-	    			parseNewick(line);
-	    			System.out.println("parse successful!");
+	    			Node tree = parseNewick(line);
+	    			tree.printStructure();
+	    			System.out.println("Newick tree parse successful!");
 	    		}
 	    		
 	    		if(sectionCount == 2){
@@ -119,6 +120,19 @@ public class InputFileParser {
 	    }
 	    
 	}
+	
+    void processMetadata(Node node) throws Exception {
+        if (node.isLeaf()) {
+            if (m_sLabels != null) {
+                node.setID(m_sLabels.get(node.getNr()));
+            }
+        } else {
+            processMetadata(node.getLeft());
+            if (node.getRight() != null) {
+                processMetadata(node.getRight());
+            }
+        }
+    }
 	
     /**
      * Try to map sStr into an index. First, assume it is a number.
@@ -345,8 +359,8 @@ public class InputFileParser {
                     convertLengthToHeight(tree);
                     int n = tree.getLeafNodeCount();
                     tree.labelInternalNodes(n);
+                    processMetadata(tree);
                     return stack.lastElement();
-                    
                 default:
                     throw new Exception("parseNewick: unknown token");
                 }         
@@ -359,6 +373,7 @@ public class InputFileParser {
             if (tree.getNr() == 0) {
                 tree.labelInternalNodes(n);
             }
+            processMetadata(tree);
             return tree;   
         } catch (Exception e) {
             System.err.println(e.getClass().toString() + "/" + e.getMessage() + ": " + sStr.substring(Math.max(0, m_iTokenStart - 100), m_iTokenStart) + " >>>" + sStr.substring(m_iTokenStart, m_iTokenEnd) + " <<< ...");
@@ -404,143 +419,5 @@ public class InputFileParser {
             }
         }
     }
-    
-	/*
-    public Node parseNewick(String sStr) throws Exception {
-        // get rid of initial and terminal spaces
-        sStr = sStr.replaceAll("^\\s+", "");
-        sStr = sStr.replaceAll("\\s+$", "");
 
-        try {
-            m_chars = sStr.toCharArray();
-            if (sStr == null || sStr.length() == 0) {
-                return null;
-            }
-            m_iTokenStart = 0;
-            m_iTokenEnd = 0;
-            Vector<Node> stack = new Vector<Node>();
-            Vector<Boolean> isFirstChild = new Vector<Boolean>();
-            stack.add(newNode());
-            isFirstChild.add(true);
-            stack.lastElement().setHeight(DEFAULT_LENGTH);
-            boolean bIsLabel = true;
-            while (m_iTokenEnd < m_chars.length) {
-                switch (nextToken()) {
-                    case BRACE_OPEN: {
-                        Node node2 = newNode();
-                        node2.setHeight(DEFAULT_LENGTH);
-                        stack.add(node2);
-                        isFirstChild.add(true);
-                        bIsLabel = true;
-                    }
-                    break;
-                    case BRACE_CLOSE: {
-                        if (isFirstChild.lastElement()) {
-                            if (m_bAllowSingleChild.get()) {
-                                // process single child nodes
-                                Node left = stack.lastElement();
-                                stack.remove(stack.size() - 1);
-                                isFirstChild.remove(isFirstChild.size() - 1);
-                                Node parent = stack.lastElement();
-                                parent.setLeft(left);
-                                //parent.setRight(null);
-                                left.setParent(parent);
-                                break;
-                            } else {
-                                // don't know how to process single child nodes
-                                throw new Exception("Node with single child found.");
-                            }
-                        }
-                        // process multi(i.e. more than 2)-child nodes by pairwise merging.
-                        while (isFirstChild.get(isFirstChild.size() - 2) == false) {
-                            Node right = stack.lastElement();
-                            stack.remove(stack.size() - 1);
-                            isFirstChild.remove(isFirstChild.size() - 1);
-                            Node left = stack.lastElement();
-                            stack.remove(stack.size() - 1);
-                            isFirstChild.remove(isFirstChild.size() - 1);
-                            Node dummyparent = newNode();
-                            dummyparent.setHeight(DEFAULT_LENGTH);
-                            dummyparent.setLeft(left);
-                            left.setParent(dummyparent);
-                            dummyparent.setRight(right);
-                            right.setParent(dummyparent);
-                            stack.add(dummyparent);
-                            isFirstChild.add(false);
-                        }
-                        // last two nodes on stack merged into single parent node
-                        Node right = stack.lastElement();
-                        stack.remove(stack.size() - 1);
-                        isFirstChild.remove(isFirstChild.size() - 1);
-                        Node left = stack.lastElement();
-                        stack.remove(stack.size() - 1);
-                        isFirstChild.remove(isFirstChild.size() - 1);
-                        Node parent = stack.lastElement();
-                        parent.setLeft(left);
-                        left.setParent(parent);
-                        parent.setRight(right);
-                        right.setParent(parent);
-                    }
-                    break;
-                    case COMMA: {
-                        Node node2 = newNode();
-                        node2.setHeight(DEFAULT_LENGTH);
-                        stack.add(node2);
-                        isFirstChild.add(false);
-                        bIsLabel = true;
-                    }
-                    break;
-                    case COLON:
-                        bIsLabel = false;
-                        break;
-                    case TEXT:
-                        if (bIsLabel) {
-                            String sLabel = sStr.substring(m_iTokenStart, m_iTokenEnd);
-                            stack.lastElement().setNr(getLabelIndex(sLabel));
-                        } else {
-                            String sLength = sStr.substring(m_iTokenStart, m_iTokenEnd);
-                            stack.lastElement().setHeight(Double.parseDouble(sLength));
-                        }
-                        break;
-                    case META_DATA:
-                        if (stack.lastElement().m_sMetaData == null) {
-                            stack.lastElement().m_sMetaData = sStr.substring(m_iTokenStart + 1, m_iTokenEnd - 1);
-                        } else {
-                            stack.lastElement().m_sMetaData += " " + sStr.substring(m_iTokenStart + 1, m_iTokenEnd - 1);
-                        }
-                        break;
-                    case SEMI_COLON:
-                        //System.err.println(stack.lastElement().toString());
-                        Node tree = stack.lastElement();
-                        tree.sort();
-                        // at this stage, all heights are actually lengths
-                        convertLengthToHeight(tree);
-                        int n = tree.getLeafNodeCount();
-                        tree.labelInternalNodes(n);
-                        if (!m_bSurpressMetadata) {
-                            processMetadata(tree);
-                        }
-                        return stack.lastElement();
-                    default:
-                        throw new Exception("parseNewick: unknown token");
-                }
-            }
-            Node tree = stack.lastElement();
-            tree.sort();
-            // at this stage, all heights are actually lengths
-            convertLengthToHeight(tree);
-            int n = tree.getLeafNodeCount();
-            if (tree.getNr() == 0) {
-                tree.labelInternalNodes(n);
-            }
-            if (!m_bSurpressMetadata) {
-                processMetadata(tree);
-            }
-            return tree;
-        } catch (Exception e) {
-            System.err.println(e.getClass().toString() + "/" + e.getMessage() + ": " + sStr.substring(Math.max(0, m_iTokenStart - 100), m_iTokenStart) + " >>>" + sStr.substring(m_iTokenStart, m_iTokenEnd) + " <<< ...");
-            throw new Exception(e.getMessage() + ": " + sStr.substring(Math.max(0, m_iTokenStart - 100), m_iTokenStart) + " >>>" + sStr.substring(m_iTokenStart, m_iTokenEnd) + " <<< ...");
-        }
-    }
-	*/
 }
