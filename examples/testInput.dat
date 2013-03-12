@@ -5,7 +5,6 @@
 0	* model: 0:our current model
 0.25318	0.32894	0.31196	0.10592	1.5	10 * base frequencies (order:A C G T) + kappa + interaction range
 
-
 // end of file.
 
 hello

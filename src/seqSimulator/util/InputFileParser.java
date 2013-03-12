@@ -11,6 +11,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import seqSimulator.core.CoreSimulator;
+import seqSimulator.evolution.substitutionmodel.ProteinEvolutionModel;
+import seqSimulator.evolution.substitutionmodel.SubstitutionModel;
 import seqSimulator.evolution.tree.Node;
 
 public class InputFileParser {
@@ -25,11 +27,13 @@ public class InputFileParser {
     List<String> m_sLabels = null;
     
 	CoreSimulator m_coreSimulator;
+	
+	SubstitutionModel m_substitutionModel;
 
 	static Pattern endFile_pattern = Pattern.compile("//");
 	static Pattern seqCodonNr_pattern = Pattern.compile("(\\d+)\\s+(\\d+)");
 	static Pattern label_pattern = Pattern.compile("[a-zA-Z]+");
-	static Pattern modelType = Pattern.compile("[0-9]+\\s\\*");
+	static Pattern modelType = Pattern.compile("([0-9]+)\\s\\*");
 	
     /**
      * used to make sure all taxa only occur once in the tree *
@@ -100,20 +104,21 @@ public class InputFileParser {
 	    			System.out.println("Newick tree parse successful!");
 	    		}
 	    		
-	    		if(sectionCount == 2){
-	    			System.out.println("Model parse start:");
+	    		if(sectionCount == 2 && !line.trim().isEmpty()){
 	    			// parse model type
 	    			matcher = modelType.matcher(line.trim());
-	    			if(matcher.find()){
-	    				System.out.println(matcher.group());
-	    			}
+	    			matcher.find();
+	    			m_substitutionModel = createModel(Integer.parseInt(matcher.group(1)));
 	    			// parse model parameters based on model type
-	    			
+	    			line = bufferedReader.readLine();
+	    			m_substitutionModel.parseParameters(line);
+	    			m_substitutionModel.printParameters();
+	    			System.out.println("Model parse successful!");
 	    		}	    		
 
-	    		if(sectionCount == 3){
+	    		if(sectionCount >= 3){
 	    			// parse structure environment?
-	    			
+	    			m_substitutionModel.parseAdditionalInfo(sectionCount);
 	    		}	
 	    		
 	    		if(line.trim().isEmpty()){
@@ -125,6 +130,17 @@ public class InputFileParser {
 	    	}
 	    }
 	    
+	}
+	
+	SubstitutionModel createModel(int modelType){
+		SubstitutionModel newModel;
+		 switch (modelType) {
+         	case 0:  newModel = new ProteinEvolutionModel();
+         	break;
+         	default: newModel = null;
+         	break;
+		 }
+		 return newModel;
 	}
 	
     void processMetadata(Node node) throws Exception {

@@ -1,5 +1,8 @@
 package seqSimulator.evolution.substitutionmodel;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import seqSimulator.evolution.datatype.MutableSequence;
 import seqSimulator.evolution.proteinstruct.InputStructure;
 
@@ -12,6 +15,12 @@ public class ProteinEvolutionModel implements SubstitutionModel {
     
     InputStructure inputStructure;
     double scalingFactor;
+    
+	static Pattern parameters_pattern = Pattern.compile("(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+");
+    
+    public ProteinEvolutionModel(){
+    	System.out.println("protein evolution model ");
+    }
     
 	public double getSubstitutionRate(MutableSequence seqI, MutableSequence seqJ, int[] codonArrayI, int differPosition, int differCodon) throws Exception{
 		
@@ -110,5 +119,51 @@ public class ProteinEvolutionModel implements SubstitutionModel {
     	}
     	return rightBound;
     }
+
+	@Override
+	public void parseParameters(String line) {
+		Matcher matcher = parameters_pattern.matcher(line);
+		matcher.find();
+		this.setFrequencies(Double.parseDouble(matcher.group(1)), Double.parseDouble(matcher.group(2)), Double.parseDouble(matcher.group(3)), Double.parseDouble(matcher.group(4)));
+		this.setKappa(Double.parseDouble(matcher.group(5)));
+		this.setInteractionRange(Integer.parseInt(matcher.group(6)));
+	}
     
+	void setFrequencies(double freqA, double freqC, double freqG, double freqT){
+		frequencies = new double [4];
+		frequencies[0] = freqA;
+		frequencies[1] = freqC;
+		frequencies[2] = freqG;
+		frequencies[3] = freqT;
+	}
+	
+	void setKappa(double inputKappa){
+		kappa = inputKappa;
+	}
+	
+	void setInteractionRange(int inputRange){
+		interactionRange = inputRange;
+	}
+
+	// for debugging purpose
+	@Override
+	public void printParameters(){
+		System.out.println("kappa:" + kappa + " range:" + interactionRange );
+		System.out.println("frequencies:" + frequencies[0] + " " + frequencies[1] + " " + frequencies[2] + " " + frequencies[3]);
+	}
+
+	@Override
+	public void parseAdditionalInfo(int sectionNr) {
+		// TODO Auto-generated method stub
+		if(sectionNr == 3){
+		}
+		
+		if(sectionNr == 4){
+			
+		}
+		
+		if(sectionNr == 5){
+			
+		}
+	}
 }
