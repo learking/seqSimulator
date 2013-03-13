@@ -1,10 +1,12 @@
 package seqSimulator.evolution.substitutionmodel;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import seqSimulator.evolution.datatype.MutableSequence;
 import seqSimulator.evolution.proteinstruct.InputStructure;
+import seqSimulator.evolution.proteinstruct.StructureEnv;
 
 public class ProteinEvolutionModel implements SubstitutionModel {
 	
@@ -14,6 +16,7 @@ public class ProteinEvolutionModel implements SubstitutionModel {
     int interactionRange;
     
     InputStructure inputStructure;
+    StructureEnv structureEnv;
     double scalingFactor;
     
 	static Pattern parameters_pattern = Pattern.compile("(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+");
@@ -153,9 +156,9 @@ public class ProteinEvolutionModel implements SubstitutionModel {
 	}
 
 	@Override
-	public void parseAdditionalInfo(int sectionNr) {
-		// TODO Auto-generated method stub
+	public void parseAdditionalInfo(int sectionNr, List<String> lines) {
 		if(sectionNr == 3){
+			this.parseStructEnv(lines);
 		}
 		
 		if(sectionNr == 4){
@@ -166,4 +169,69 @@ public class ProteinEvolutionModel implements SubstitutionModel {
 			
 		}
 	}
+	
+	void parseStructEnv(List<String> lines) {
+		structureEnv = new StructureEnv();
+		
+		for (int i = 0; i < lines.size(); i++) {
+			String[] matrixEntriesStr = lines.get(i).split("\\s+");
+			double[] matrixEntries = new double[matrixEntriesStr.length];
+			for (int item = 0; item < matrixEntries.length; item++) {
+				matrixEntries[item] = Double.parseDouble(matrixEntriesStr[item]);
+				//System.out.print(matrixEntries[item] + "|");
+			}
+			double[][] newEnv = getNewEnv(matrixEntries);
+			structureEnv.addEnv(newEnv);
+		}
+		/*
+		double[][] mockMatrix = mockUpMatrix();
+		for(int i = 0; i < 61; i++) {
+			for (int j = 0; j < 61; j++) {
+				System.out.print(mockMatrix[i][j]+" ");
+			}
+		}
+*/
+	}
+	
+	double[][] getNewEnv(double[] matrixEntries){
+		double[][] newEnv = new double[61][61];
+		for(int i = 0; i< 61; i++) {
+			for(int j = 0; j < 61; j++) {
+				newEnv[i][j] = matrixEntries[i*61 + j];
+			}
+		}
+		return newEnv;
+	}
+	
+	/*
+	public double[][] mockUpMatrix(){
+
+		double [] codonFreq = new double[]{0.00983798,0.01745548,0.00222048,0.01443315,
+				0.00844604,0.01498576,0.00190632,0.01239105,
+				0.01064012,0.01887870,
+				0.00469486,0.00833007,0.00688776,
+				0.01592816,0.02826125,0.00359507,0.02336796,
+				0.01367453,0.02426265,0.00308642,0.02006170,
+				0.01722686,0.03056552,0.00388819,0.02527326,
+				0.00760121,0.01348678,0.00171563,0.01115161,
+				0.01574077,0.02792876,0.00355278,0.02309304,
+				0.01351366,0.02397721,0.00305010,0.01982568,
+				0.01702419,0.03020593,0.00384245,0.02497593,
+				0.00751178,0.01332811,0.00169545,0.01102042,
+				0.02525082,0.04480239,0.00569924,0.03704508,
+				0.02167816,0.03846344,0.00489288,0.03180369,
+				0.02730964,0.04845534,0.00616393,0.04006555,
+				0.01205015,0.02138052,0.00271978,0.01767859};
+		
+		double [][] mockupmatrix = new double [61][61];
+
+		for (int i = 0; i < 61; i++) {
+			for (int j = 0; j < 61; j++) {
+				mockupmatrix[i][j] = codonFreq[i] * codonFreq[j];
+			}
+		}
+		
+		return mockupmatrix;
+	}
+	*/
 }

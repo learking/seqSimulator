@@ -118,7 +118,14 @@ public class InputFileParser {
 
 	    		if(sectionCount >= 3){
 	    			// parse structure environment?
-	    			m_substitutionModel.parseAdditionalInfo(sectionCount);
+	    			List<String> lines = new ArrayList<String>();
+	    			lines.add(line);
+	    			
+	    			while(!(line = bufferedReader.readLine()).trim().isEmpty()) {
+	    				lines.add(line);
+	    			}
+	    			
+	    			m_substitutionModel.parseAdditionalInfo(sectionCount, lines);
 	    		}	
 	    		
 	    		if(line.trim().isEmpty()){
