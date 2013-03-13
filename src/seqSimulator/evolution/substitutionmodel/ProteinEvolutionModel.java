@@ -6,6 +6,7 @@ import java.util.regex.Pattern;
 
 import seqSimulator.evolution.datatype.MutableSequence;
 import seqSimulator.evolution.proteinstruct.InputStructure;
+import seqSimulator.evolution.proteinstruct.SolventAccessibility;
 import seqSimulator.evolution.proteinstruct.StructureEnv;
 
 public class ProteinEvolutionModel implements SubstitutionModel {
@@ -17,6 +18,7 @@ public class ProteinEvolutionModel implements SubstitutionModel {
     
     InputStructure inputStructure;
     StructureEnv structureEnv;
+    SolventAccessibility solventAccessibility;
     double scalingFactor;
     
 	static Pattern parameters_pattern = Pattern.compile("(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+");
@@ -159,10 +161,11 @@ public class ProteinEvolutionModel implements SubstitutionModel {
 	public void parseAdditionalInfo(int sectionNr, List<String> lines) {
 		if(sectionNr == 3){
 			this.parseStructEnv(lines);
+			//System.out.println(structureEnv.getMatrixSum(9));
 		}
 		
 		if(sectionNr == 4){
-			
+			this.parseSolventAccessibility(lines);
 		}
 		
 		if(sectionNr == 5){
@@ -171,6 +174,7 @@ public class ProteinEvolutionModel implements SubstitutionModel {
 	}
 	
 	void parseStructEnv(List<String> lines) {
+		System.out.println("start parsing structEnv:");
 		structureEnv = new StructureEnv();
 		
 		for (int i = 0; i < lines.size(); i++) {
@@ -180,17 +184,15 @@ public class ProteinEvolutionModel implements SubstitutionModel {
 				matrixEntries[item] = Double.parseDouble(matrixEntriesStr[item]);
 				//System.out.print(matrixEntries[item] + "|");
 			}
-			double[][] newEnv = getNewEnv(matrixEntries);
-			structureEnv.addEnv(newEnv);
+			structureEnv.addEnv(getNewEnv(matrixEntries));
 		}
-		/*
-		double[][] mockMatrix = mockUpMatrix();
-		for(int i = 0; i < 61; i++) {
-			for (int j = 0; j < 61; j++) {
-				System.out.print(mockMatrix[i][j]+" ");
-			}
-		}
-*/
+		
+		structureEnv.calculateLogStructEnv();
+		
+		// debug
+		//System.out.println(structureEnv.getLogProb(9, 43, 34));
+		
+		System.out.println("Parsing structEnv successful!");
 	}
 	
 	double[][] getNewEnv(double[] matrixEntries){
@@ -202,8 +204,52 @@ public class ProteinEvolutionModel implements SubstitutionModel {
 		}
 		return newEnv;
 	}
+
+	void parseSolventAccessibility(List<String> lines) {
+		System.out.println("start parsing SolventAccessibility:");
+		solventAccessibility = new SolventAccessibility();
+		
+		for (int i = 0; i < lines.size(); i++) {
+			String[] matrixEntriesStr = lines.get(i).split("\\s+");
+			double[] matrixEntries = new double[matrixEntriesStr.length];
+			for (int item = 0; item < matrixEntries.length; item++) {
+				matrixEntries[item] = Double.parseDouble(matrixEntriesStr[item]);
+				//System.out.print(matrixEntries[item] + "|");
+			}
+			solventAccessibility.addCategory(matrixEntries);
+		}
+		// pre-compute log for each category
+		solventAccessibility.computeLogCategories();
+		
+		//solventAccessibility.printItem(9, 60);
+		
+		System.out.println("Parsing SolventAccessibility successful!");
+	}
 	
 	/*
+	public void mockUpSolventAccessibility(){
+		double [] codonFreq = new double[]{0.00983798,0.01745548,0.00222048,0.01443315,
+				0.00844604,0.01498576,0.00190632,0.01239105,
+				0.01064012,0.01887870,
+				0.00469486,0.00833007,0.00688776,
+				0.01592816,0.02826125,0.00359507,0.02336796,
+				0.01367453,0.02426265,0.00308642,0.02006170,
+				0.01722686,0.03056552,0.00388819,0.02527326,
+				0.00760121,0.01348678,0.00171563,0.01115161,
+				0.01574077,0.02792876,0.00355278,0.02309304,
+				0.01351366,0.02397721,0.00305010,0.01982568,
+				0.01702419,0.03020593,0.00384245,0.02497593,
+				0.00751178,0.01332811,0.00169545,0.01102042,
+				0.02525082,0.04480239,0.00569924,0.03704508,
+				0.02167816,0.03846344,0.00489288,0.03180369,
+				0.02730964,0.04845534,0.00616393,0.04006555,
+				0.01205015,0.02138052,0.00271978,0.01767859};
+		
+		for(int i = 0; i < 61; i++) {
+				System.out.print(codonFreq[i]+" ");
+		}		
+	}
+	
 	public double[][] mockUpMatrix(){
 
 		double [] codonFreq = new double[]{0.00983798,0.01745548,0.00222048,0.01443315,
