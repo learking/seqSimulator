@@ -138,4 +138,23 @@ public class MutableSequence {
 	public String toString(){
 		return Arrays.toString(intSequence);
 	}
+	
+	public String toACGT(){
+		String ACGT_sequence = "";
+		for (int i = 0; i < intSequence.length; i++) {
+			if(intSequence[i] == 0){
+				ACGT_sequence += "A";
+			}
+			if(intSequence[i] == 1){
+				ACGT_sequence += "C";
+			}
+			if(intSequence[i] == 2){
+				ACGT_sequence += "G";
+			}
+			if(intSequence[i] == 3){
+				ACGT_sequence += "T";
+			}
+		}
+		return ACGT_sequence;
+	}
 }

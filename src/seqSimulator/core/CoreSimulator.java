@@ -19,7 +19,7 @@ public class CoreSimulator {
 	
 	MutableSequence m_rootSeq;
 	// set the time it will take to get our root seq
-	double rootSeqTime = 1;
+	double rootSeqTime = 10;
 	
 	public CoreSimulator(){
 	}
@@ -134,6 +134,7 @@ public class CoreSimulator {
 		
 		System.out.println("Total number:" + totalNumOfChanges);
 		System.out.println(endSeq.toString());
+		System.out.println(endSeq.toACGT());
 		return endSeq;
 	}
 	
