@@ -19,7 +19,7 @@ public class CoreSimulator {
 	
 	MutableSequence m_rootSeq;
 	// set the time it will take to get our root seq
-	double rootSeqTime = 10;
+	double rootSeqTime = 1000;
 	
 	public CoreSimulator(){
 	}
