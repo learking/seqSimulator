@@ -25,19 +25,19 @@ public class ProteinEvolutionModel implements SubstitutionModel {
     
     public ProteinEvolutionModel(){
     	System.out.println("protein evolution model ");
+    	inputStructure = new InputStructure();
     }
     
 	public double getSubstitutionRate(MutableSequence seqI, MutableSequence seqJ, int[] codonArrayI, int differPosition, int differCodon) throws Exception{
-		
+
 		scalingFactor = getScalingFactor();
 				
 		double substitutionRate = 0;
 
 		// find where these two sequences differ (both location and value)
 		//int differPosition = getDifferPosition(seqI, seqJ);
-
 		double logTAU = getLogTAU(seqI, seqJ, codonArrayI, differPosition, differCodon);
-		
+
 		substitutionRate = logTAU / (1 - 1/Math.exp(logTAU));
 		
 		if(isTransition(seqI.getNucleotide(differPosition), seqJ.getNucleotide(differPosition))){
@@ -76,6 +76,7 @@ public class ProteinEvolutionModel implements SubstitutionModel {
 
     	int codonDifferPosition = differPosition / 3;
     	//int differCodon = getDifferCodon(seqJ, codonDifferPosition);
+
     	double structBasedSeqProbRatio = getStructBasedSeqProbRatio(codonArrayI, differCodon, codonDifferPosition);
 
     	logTAU = structBasedSeqProbRatio - neutralSeqProbRatio;
@@ -84,10 +85,12 @@ public class ProteinEvolutionModel implements SubstitutionModel {
     
     // range 10 version of getStructBasedSeqProbRatio
     double getStructBasedSeqProbRatio(int[] codonArrayI, int differCodon, int codonDifferPosition) throws Exception{
+    	
     	double structBasedSeqProbRatio = 0;
     	
     	double firstOrderRatio = inputStructure.getFirstOrderLogProb(codonDifferPosition, differCodon) - inputStructure.getFirstOrderLogProb(codonDifferPosition, codonArrayI[codonDifferPosition]);
-    	
+    	System.out.println("first order:" + firstOrderRatio);
+
     	double interactionRatio = 0;
     	
     	// here, m refers to a codon position, it should in
@@ -142,14 +145,25 @@ public class ProteinEvolutionModel implements SubstitutionModel {
 		frequencies[3] = freqT;
 	}
 	
-	void setKappa(double inputKappa){
+	public void setKappa(double inputKappa){
 		kappa = inputKappa;
 	}
 	
-	void setInteractionRange(int inputRange){
+	public void setInteractionRange(int inputRange){
 		interactionRange = inputRange;
 	}
 
+	// for Junit test only
+	/*
+	public void setStructEnv(StructureEnv inputStructure) {
+		structureEnv = inputStructure;
+	}
+	
+	public void setSolventAccessibility(SolventAccessibility inputSolventAccessibility) {
+		solventAccessibility = inputSolventAccessibility;
+	}
+	*/
+	
 	// for debugging purpose
 	@Override
 	public void printParameters(){
@@ -161,7 +175,6 @@ public class ProteinEvolutionModel implements SubstitutionModel {
 	public void parseAdditionalInfo(int sectionNr, List<String> lines) {
 		if(sectionNr == 3){
 			this.parseStructEnv(lines);
-			//System.out.println(structureEnv.getMatrixSum(9));
 		}
 		
 		if(sectionNr == 4){
@@ -169,8 +182,46 @@ public class ProteinEvolutionModel implements SubstitutionModel {
 		}
 		
 		if(sectionNr == 5){
-			
+			this.parseFirstOrderTerms(lines);
 		}
+
+		if(sectionNr == 6){
+			this.parseInteractionTerms(lines);
+		}
+	}
+
+	void parseFirstOrderTerms(List<String> lines) {
+		System.out.println("start parsing firstOrderTerms:");
+		if(lines.size() == 1) {
+			String[] solventEntriesStr = lines.get(0).split("\\s+");
+			int[] solventEntries = new int[solventEntriesStr.length];
+			for (int item = 0; item < solventEntries.length; item++) {
+				solventEntries[item] = Integer.parseInt(solventEntriesStr[item]);
+			}
+			
+			inputStructure.setFirstOrderTerms(solventEntries);
+			
+		}else {
+			System.err.println("should be one line!");
+		}
+		System.out.println("Successfully parsing firstOrderTerms!");
+	}
+
+	void parseInteractionTerms(List<String> lines) {
+		System.out.println("start parsing interactionTerms:");
+		int matrixDim = lines.get(0).split("\\s+").length;
+		int[][] matrix = new int[matrixDim][matrixDim];
+		for (int i = 0; i < lines.size(); i++) {
+			String[] matrixEntriesStr = lines.get(i).split("\\s+");
+			int[] matrixEntries = new int[matrixEntriesStr.length];
+			for (int item = 0; item < matrixEntries.length; item++) {
+				matrixEntries[item] = Integer.parseInt(matrixEntriesStr[item]);
+				//System.out.print(matrixEntries[item] + "|");
+			}
+			matrix[i] = matrixEntries;
+		}
+		inputStructure.setInteractionTerms(matrix);
+		System.out.println("Successfully parsing interactionTerms!");
 	}
 	
 	void parseStructEnv(List<String> lines) {
@@ -191,6 +242,7 @@ public class ProteinEvolutionModel implements SubstitutionModel {
 		
 		// debug
 		//System.out.println(structureEnv.getLogProb(9, 43, 34));
+		inputStructure.setStructEnv(structureEnv);
 		
 		System.out.println("Parsing structEnv successful!");
 	}
@@ -222,7 +274,7 @@ public class ProteinEvolutionModel implements SubstitutionModel {
 		solventAccessibility.computeLogCategories();
 		
 		//solventAccessibility.printItem(9, 60);
-		
+		inputStructure.setSolventAccessibility(solventAccessibility);
 		System.out.println("Parsing SolventAccessibility successful!");
 	}
 	
@@ -280,4 +332,16 @@ public class ProteinEvolutionModel implements SubstitutionModel {
 		return mockupmatrix;
 	}
 	*/
+	
+	public void isSolventNull() {
+		if(solventAccessibility == null) {
+			System.out.println("solvent null");
+		}
+	}
+
+	public void isStructNull() {
+		if(structureEnv == null) {
+			System.out.println("struct null");
+		}
+	}
 }

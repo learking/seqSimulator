@@ -11,6 +11,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import seqSimulator.core.CoreSimulator;
+import seqSimulator.evolution.datatype.CodonUtil;
+import seqSimulator.evolution.datatype.MutableSequence;
 import seqSimulator.evolution.substitutionmodel.ProteinEvolutionModel;
 import seqSimulator.evolution.substitutionmodel.SubstitutionModel;
 import seqSimulator.evolution.tree.Node;
@@ -29,7 +31,12 @@ public class InputFileParser {
 	CoreSimulator m_coreSimulator;
 	
 	SubstitutionModel m_substitutionModel;
+	
+	Node m_tree;
 
+	int seqNr;
+	int codonNr;
+	
 	static Pattern endFile_pattern = Pattern.compile("//");
 	static Pattern seqCodonNr_pattern = Pattern.compile("(\\d+)\\s+(\\d+)");
 	static Pattern label_pattern = Pattern.compile("[a-zA-Z]+");
@@ -51,8 +58,32 @@ public class InputFileParser {
     }
     
 	public CoreSimulator parseFile(File inputFile) throws Exception{
-		
+		System.out.println("start of the process");
+
 		parse(inputFile);
+		
+		// test whether getSubstitutionRate generates the same result as the original Model in evoprotein
+		/*
+		MutableSequence seqI = new MutableSequence(9);
+		int [] intSeqI = new int [] {1,1,1,0,2,0,3,0,1};
+		seqI.setSequence(intSeqI);
+		
+		MutableSequence seqJ = new MutableSequence(9);
+		int [] intSeqJ = new int [] {1,1,1,0,2,0,3,1,1};
+		seqJ.setSequence(intSeqJ);
+
+		CodonUtil codonUtil = new CodonUtil();
+		int differCodon = codonUtil.translate(seqJ, 6);
+		
+		double testRate = m_substitutionModel.getSubstitutionRate(seqI, seqJ, seqI.toCodonArray(), 7, differCodon);
+		System.out.println("the rate is:" + testRate);
+		*/
+		// result is OK
+		
+		m_coreSimulator.setSeqNr(seqNr);
+		m_coreSimulator.setCodonNr(codonNr);
+		m_coreSimulator.setTree(m_tree);
+		m_coreSimulator.setModel(m_substitutionModel);
 		
         if (m_coreSimulator != null){
             return m_coreSimulator;
@@ -89,8 +120,8 @@ public class InputFileParser {
 	    		if(sectionCount == 0){
 	    			matcher = seqCodonNr_pattern.matcher(line);
 		    		if(matcher.find()){
-		    			int seqNr = Integer.parseInt(matcher.group(1));
-		    			int codonNr = Integer.parseInt(matcher.group(2));
+		    			seqNr = Integer.parseInt(matcher.group(1));
+		    			codonNr = Integer.parseInt(matcher.group(2));
 		    			System.out.println("seq Nr:" + seqNr + " codonNr:" + codonNr);
 		    		}
 	    		}
@@ -99,8 +130,8 @@ public class InputFileParser {
 	    			System.out.println("Newick tree parse started!");
 	    			line = line.trim();
 	    			initLabels(line);
-	    			Node tree = parseNewick(line);
-	    			tree.printStructure();
+	    			m_tree = parseNewick(line);
+	    			m_tree.printStructure();
 	    			System.out.println("Newick tree parse successful!");
 	    		}
 	    		
