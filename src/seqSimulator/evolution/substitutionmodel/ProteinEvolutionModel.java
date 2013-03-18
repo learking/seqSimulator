@@ -89,7 +89,7 @@ public class ProteinEvolutionModel implements SubstitutionModel {
     	double structBasedSeqProbRatio = 0;
     	
     	double firstOrderRatio = inputStructure.getFirstOrderLogProb(codonDifferPosition, differCodon) - inputStructure.getFirstOrderLogProb(codonDifferPosition, codonArrayI[codonDifferPosition]);
-    	System.out.println("first order:" + firstOrderRatio);
+    	//System.out.println("first order:" + firstOrderRatio);
 
     	double interactionRatio = 0;
     	

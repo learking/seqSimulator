@@ -3,7 +3,11 @@ package seqSimulator.evolution.tree;
 import java.util.ArrayList;
 import java.util.List;
 
+import seqSimulator.evolution.datatype.MutableSequence;
+
 public class Node {
+	
+	MutableSequence m_sequence;
 
     /**
      * label nr of node, used mostly when this is a leaf.
@@ -119,6 +123,15 @@ public class Node {
 			children.set(1, m_right);
 	    	break;
     	}
+	}
+	
+	// set sequence
+	public void setSequence(MutableSequence inputSequence){
+		m_sequence = inputSequence;
+	}
+	
+	public MutableSequence getSequence(){
+		return m_sequence.copy();
 	}
 	
     /**

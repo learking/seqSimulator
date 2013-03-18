@@ -1,6 +1,6 @@
 5 100	* <# seqs>  <# codons>
 
-((Human: 0.21, Chimpanzee: 0.21): 1.29, Gorilla: 1.5, (Orangutan: 1.2, Gibbon: 1.2): 0.3);
+(((Human: 0.07, Chimpanzee: 0.07): 0.43, (Orangutan: 0.4, Gibbon: 0.4): 0.1):0.0 , Gorilla: 0.5);
 
 0	* model: 0:our current model
 0.25318	0.32894	0.31196	0.10592	1.5	10 * base frequencies (order:A C G T) + kappa + interaction range
