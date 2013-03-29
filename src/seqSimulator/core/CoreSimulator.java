@@ -18,8 +18,8 @@ public class CoreSimulator {
 	SubstitutionModel m_model;
 	
 	MutableSequence m_rootSeq;
-	// set the time it will take to get our root seq
-	double rootSeqTime = 1000;
+	// by default, rootSeqTime = 10
+	double rootSeqTime = 10;
 	
 	public CoreSimulator(){
 	}
@@ -247,5 +247,9 @@ public class CoreSimulator {
 	
 	public void setModel(SubstitutionModel inputModel) {
 		m_model = inputModel;
+	}
+	
+	public void setRootSeqTime(double inputRootSeqTime) {
+		rootSeqTime = inputRootSeqTime;
 	}
 }

@@ -38,7 +38,7 @@ public class InputFileParser {
 	int codonNr;
 	
 	static Pattern endFile_pattern = Pattern.compile("//");
-	static Pattern seqCodonNr_pattern = Pattern.compile("(\\d+)\\s+(\\d+)");
+	static Pattern seqCodonNr_pattern = Pattern.compile("(\\d+)\\s+(\\d+)\\s+(\\d+)");
 	static Pattern label_pattern = Pattern.compile("[a-zA-Z]+");
 	static Pattern modelType = Pattern.compile("([0-9]+)\\s\\*");
 	
@@ -122,6 +122,7 @@ public class InputFileParser {
 		    		if(matcher.find()){
 		    			seqNr = Integer.parseInt(matcher.group(1));
 		    			codonNr = Integer.parseInt(matcher.group(2));
+		    			m_coreSimulator.setRootSeqTime((double) Integer.parseInt(matcher.group(3)));
 		    			System.out.println("seq Nr:" + seqNr + " codonNr:" + codonNr);
 		    		}
 	    		}
